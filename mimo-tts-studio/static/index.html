@@ -3,230 +3,242 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MiMo TTS 工作室</title>
+  <title>MiMo-TTS-Studio</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="wrap">
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo">🔊</span>
-      <div>
-        <h1>MiMo TTS 工作室</h1>
-        <p class="sub">音色设计 · 音色复刻 · 本地运行</p>
+    <!-- 刊头 -->
+    <header class="masthead">
+      <div class="mark">
+        <svg width="26" height="18" viewBox="0 0 26 18" fill="none" aria-hidden="true">
+          <path d="M2 9h2M6 5v8M10 7v4M14 3v12M18 6v6M22 8v2M25 9h0"
+                stroke="#2A2A28" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div class="name">MiMo-TTS-Studio</div>
       </div>
-    </div>
-    <div class="top-actions">
-      <span id="keyStatus" class="key-status warn" role="button" tabindex="0" title="点击打开设置">未配置 API Key</span>
-      <button id="btnSettings" class="btn ghost" type="button">⚙ 设置</button>
-    </div>
-  </header>
+      <div class="mast-side">
+        <span id="keyStatus" class="status" role="button" tabindex="0" title="点击打开设置">
+          <span class="dot"></span><span id="keyStatusText">API KEY 未配置</span>
+        </span>
+        <button id="btnSettings" class="link" type="button">设置</button>
+      </div>
+    </header>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="design" type="button">🎨 音色设计</button>
-    <button class="tab" data-tab="clone" type="button">🎙 音色复刻</button>
+    <!-- 索引式 Tab -->
+    <nav class="index">
+      <button class="tab active" data-tab="design" type="button">01&nbsp;&nbsp;音色设计</button>
+      <button class="tab" data-tab="clone" type="button">02&nbsp;&nbsp;音色复刻</button>
+    </nav>
+
+    <main>
+      <!-- ============ Tab 1: 音色设计 ============ -->
+      <section id="panel-design" class="panel active">
+        <div class="grid">
+          <section class="block">
+            <div class="sec-label"><span class="tick"></span>01 — 音色描述&nbsp;<span class="en">VOICE PROMPT</span></div>
+            <div id="designForm">
+              <div class="field-row">
+                <div class="field grow">
+                  <label for="descGender">性别</label>
+                  <select id="descGender">
+                    <option value="female">女性</option>
+                    <option value="male">男性</option>
+                    <option value="any" selected>不限</option>
+                  </select>
+                </div>
+                <div class="field grow">
+                  <label for="descAge">年龄段</label>
+                  <select id="descAge">
+                    <option value="any" selected>不限</option>
+                    <option value="child">儿童</option>
+                    <option value="teen">少年</option>
+                    <option value="20s">二十多岁</option>
+                    <option value="30s">三十多岁</option>
+                    <option value="40s">四十多岁</option>
+                    <option value="50s">五十多岁</option>
+                    <option value="60s">六十多岁</option>
+                    <option value="elder">老年</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>音色质感 <span class="hint">可多选</span></label>
+                <div id="descTimbre" class="chips"></div>
+              </div>
+
+              <div class="field">
+                <label>情绪语气 <span class="hint">可多选</span></label>
+                <div id="descMood" class="chips"></div>
+              </div>
+
+              <div class="field-row">
+                <div class="field grow">
+                  <label for="descSpeed">语速节奏</label>
+                  <select id="descSpeed">
+                    <option value="any" selected>不限</option>
+                    <option value="verySlow">极慢</option>
+                    <option value="slow">慢</option>
+                    <option value="normal">正常</option>
+                    <option value="fast">快</option>
+                    <option value="veryFast">极快</option>
+                  </select>
+                </div>
+                <div class="field grow">
+                  <label for="descRole">角色人设</label>
+                  <select id="descRole">
+                    <option value="any" selected>不限</option>
+                    <option value="narrator">旁白</option>
+                    <option value="radioDj">深夜电台 DJ</option>
+                    <option value="storyteller">评书先生</option>
+                    <option value="podcast">播客主持</option>
+                    <option value="audiobook">有声书主播</option>
+                    <option value="documentary">纪录片解说</option>
+                    <option value="gameVoice">游戏角色配音</option>
+                    <option value="customerService">客服</option>
+                    <option value="teacher">老师</option>
+                    <option value="sales">推销员</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="descScene">场景 <span class="hint">可选</span></label>
+                <input id="descScene" type="text" placeholder="例如：深夜直播间里独自对着话筒独白">
+              </div>
+
+              <div class="field-row">
+                <div class="field grow">
+                  <label for="descEra">年代 / 风格参照 <span class="hint">可选</span></label>
+                  <input id="descEra" type="text" placeholder="例如：八十年代译制片配音">
+                </div>
+                <div class="field">
+                  <label for="descLang">描述语言</label>
+                  <select id="descLang">
+                    <option value="zh" selected>中文</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="descStyle">说话风格 <span class="hint">可选</span></label>
+                <input id="descStyle" type="text" placeholder="例如：压低嗓音像在密谋，咬字清晰">
+              </div>
+
+              <div class="field">
+                <label>示例模板</label>
+                <div id="templateList" class="chips"></div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <section class="block">
+              <div class="sec-label req"><span class="tick"></span>02 — 描述预览&nbsp;<span class="en">PREVIEW</span></div>
+              <textarea id="designPrompt" rows="6" placeholder="基于左侧工单自动生成，可在此直接修改…"></textarea>
+              <div class="preview-foot">
+                <button id="btnRegenPrompt" class="link" type="button">从表单重新生成</button>
+                <span id="designPromptCount" class="meta"></span>
+              </div>
+              <div class="tip">避免矛盾特征（如「稚嫩童声 + CEO 气场」）；避免混响 / 回声 / EQ 等后期效果词；避免「普通的」「正常的」这类模糊词。</div>
+            </section>
+
+            <section class="block">
+              <div class="sec-label req"><span class="tick"></span>03 — 合成文本&nbsp;<span class="en">SCRIPT</span></div>
+              <div class="tagbar" data-tagbar="designText"></div>
+              <textarea id="designText" rows="4" placeholder="输入要合成的文本；勾选智能润色后可留空…"></textarea>
+              <input id="designStyleTags" type="text" placeholder="整体风格标签（可选，如：磁性 慵懒）">
+              <div class="check-row">
+                <label class="check">
+                  <input type="checkbox" id="designOptimize">
+                  <span>文本智能润色</span>
+                </label>
+                <span class="hint">开启后文本留空，由 MiMo-V2.5 模型自动润色——会产生 API 计费。</span>
+              </div>
+
+              <div class="action-row">
+                <button id="btnDesignGo" class="btn-ink" type="button">生成语音</button>
+                <span id="designError" class="error"></span>
+              </div>
+              <div id="designResult" class="result">
+                <div class="result-placeholder">合成音频</div>
+              </div>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============ Tab 2: 音色复刻 ============ -->
+      <section id="panel-clone" class="panel">
+        <section class="block">
+          <div class="sec-label req"><span class="tick"></span>01 — 音频样本&nbsp;<span class="en">SAMPLE</span></div>
+          <div id="dropZone" class="dropzone">
+            <input type="file" id="fileInput" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav" hidden>
+            <p>把音频拖到这里，或 <span class="link">点击选择文件</span></p>
+            <p class="hint">仅支持 mp3 / wav；Base64 编码后不能超过 10MB（建议原文件 ≤ 7.5MB），上传后即时试听</p>
+          </div>
+          <div id="sampleInfo" class="sample-info hidden">
+            <audio id="samplePlayer" controls preload="metadata"></audio>
+            <div class="sample-meta">
+              <span id="sampleName"></span>
+              <button id="btnClearSample" class="link" type="button">移除</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="block">
+          <div class="sec-label"><span class="tick"></span>02 — 风格指令&nbsp;<span class="en">DIRECTION</span></div>
+          <input id="cloneInstruction" type="text" placeholder="例如：低沉性感、带一点气声的深夜电台腔">
+          <div class="tip">指令只控制语气与风格，不会出现在合成语音的内容里。</div>
+        </section>
+
+        <section class="block">
+          <div class="sec-label req"><span class="tick"></span>03 — 合成文本&nbsp;<span class="en">SCRIPT</span></div>
+          <div class="tagbar" data-tagbar="cloneText"></div>
+          <textarea id="cloneText" rows="4" placeholder="输入要合成的文本，可插入 (风格) 与 [音频标签]…"></textarea>
+          <input id="cloneStyleTags" type="text" placeholder="整体风格标签（可选，如：磁性 慵懒）">
+
+          <div class="action-row">
+            <button id="btnCloneGo" class="btn-ink" type="button">生成语音</button>
+            <span id="cloneError" class="error"></span>
+          </div>
+          <div id="cloneResult" class="result">
+            <div class="result-placeholder">合成音频</div>
+          </div>
+        </section>
+      </section>
+    </main>
   </div>
 
-  <main>
-    <!-- ================= Tab 1: 音色设计 ================= -->
-    <section id="panel-design" class="panel active">
-      <div class="grid">
-        <div class="card">
-          <h2>结构化工单 <span class="hint">自动拼装音色描述</span></h2>
-          <div id="designForm">
-            <div class="field-row">
-              <div class="field grow">
-                <label for="descGender">性别</label>
-                <select id="descGender">
-                  <option value="female">女性</option>
-                  <option value="male">男性</option>
-                  <option value="any" selected>不限</option>
-                </select>
-              </div>
-              <div class="field grow">
-                <label for="descAge">年龄段</label>
-                <select id="descAge">
-                  <option value="any" selected>不限</option>
-                  <option value="child">儿童</option>
-                  <option value="teen">少年</option>
-                  <option value="20s">二十多岁</option>
-                  <option value="30s">三十多岁</option>
-                  <option value="40s">四十多岁</option>
-                  <option value="50s">五十多岁</option>
-                  <option value="60s">六十多岁</option>
-                  <option value="elder">老年</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>音色质感 <span class="hint">可多选</span></label>
-              <div id="descTimbre" class="chips"></div>
-            </div>
-
-            <div class="field">
-              <label>情绪语气 <span class="hint">可多选</span></label>
-              <div id="descMood" class="chips"></div>
-            </div>
-
-            <div class="field-row">
-              <div class="field grow">
-                <label for="descSpeed">语速节奏</label>
-                <select id="descSpeed">
-                  <option value="any" selected>不限</option>
-                  <option value="verySlow">极慢</option>
-                  <option value="slow">慢</option>
-                  <option value="normal">正常</option>
-                  <option value="fast">快</option>
-                  <option value="veryFast">极快</option>
-                </select>
-              </div>
-              <div class="field grow">
-                <label for="descRole">角色人设</label>
-                <select id="descRole">
-                  <option value="any" selected>不限</option>
-                  <option value="narrator">旁白</option>
-                  <option value="radioDj">深夜电台 DJ</option>
-                  <option value="storyteller">评书先生</option>
-                  <option value="podcast">播客主持</option>
-                  <option value="audiobook">有声书主播</option>
-                  <option value="documentary">纪录片解说</option>
-                  <option value="gameVoice">游戏角色配音</option>
-                  <option value="customerService">客服</option>
-                  <option value="teacher">老师</option>
-                  <option value="sales">推销员</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="descScene">场景 <span class="hint">可选</span></label>
-              <input id="descScene" type="text" placeholder="例如：深夜直播间里独自对着话筒独白">
-            </div>
-
-            <div class="field-row">
-              <div class="field grow">
-                <label for="descEra">年代 / 风格参照 <span class="hint">可选</span></label>
-                <input id="descEra" type="text" placeholder="例如：八十年代译制片配音">
-              </div>
-              <div class="field">
-                <label for="descLang">描述语言</label>
-                <select id="descLang">
-                  <option value="zh" selected>中文</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="descStyle">说话风格 <span class="hint">可选</span></label>
-              <input id="descStyle" type="text" placeholder="例如：压低嗓音像在密谋，咬字清晰">
-            </div>
-
-            <div class="field">
-              <label>示例模板</label>
-              <div id="templateList" class="chips"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>音色描述预览 <span class="hint">建议 1-4 句，可手工微调</span></h2>
-          <textarea id="designPrompt" rows="8" placeholder="基于左侧工单自动生成，可在此直接修改…"></textarea>
-          <div class="preview-foot">
-            <button id="btnRegenPrompt" class="btn ghost sm" type="button">↻ 从表单重新生成</button>
-            <span id="designPromptCount" class="char-hint"></span>
-          </div>
-          <div class="tip">
-            避免矛盾特征（如「稚嫩童声 + CEO 气场」）；避免混响 / 回声 / EQ / 压缩等后期效果词；避免「普通的」「正常的」这类模糊词。
-          </div>
-        </div>
-      </div>
-
-      <div class="card synth-card">
-        <h2>合成文本 <span class="hint">内容放在 assistant 消息，支持风格标签</span></h2>
-        <div class="tagbar" data-tagbar="designText"></div>
-        <textarea id="designText" rows="4" placeholder="输入要合成的文本；勾选「文本智能润色」后可留空…"></textarea>
-        <div class="synth-options">
-          <input id="designStyleTags" type="text" placeholder="整体风格标签（可选，如：磁性 慵懒，将自动加括号并置于文本开头）">
-          <label class="check">
-            <input type="checkbox" id="designOptimize">
-            <span>文本智能润色（optimize_text_preview）— 文本留空时由模型根据音色描述自动生成</span>
-          </label>
-        </div>
-        <div class="actions">
-          <button id="btnDesignGo" class="btn primary" type="button">✨ 生成语音</button>
-          <span id="designError" class="error"></span>
-        </div>
-        <div id="designResult" class="result"></div>
-      </div>
-    </section>
-
-    <!-- ================= Tab 2: 音色复刻 ================= -->
-    <section id="panel-clone" class="panel">
-      <div class="card">
-        <h2>① 音频样本 <span class="hint">mp3 / wav · Base64 ≤ 10MB</span></h2>
-        <div id="dropZone" class="dropzone">
-          <input type="file" id="fileInput" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav" hidden>
-          <div class="dz-icon">🎙</div>
-          <p>把音频拖到这里，或 <span class="link">点击选择文件</span></p>
-          <p class="hint">仅支持 mp3 / wav；Base64 编码后不能超过 10MB（建议原文件 ≤ 7.5MB），上传后即时试听</p>
-        </div>
-        <div id="sampleInfo" class="sample-info hidden">
-          <audio id="samplePlayer" controls preload="metadata"></audio>
-          <div class="sample-meta">
-            <span id="sampleName"></span>
-            <button id="btnClearSample" class="btn ghost sm" type="button">移除</button>
-          </div>
-        </div>
-
-        <h2>② 风格指令 <span class="hint">可选 · 自然语言，放在 user 消息</span></h2>
-        <input id="cloneInstruction" type="text" placeholder="例如：低沉性感、带一点气声的深夜电台腔">
-        <div class="tip">指令只控制语气与风格，不会出现在合成语音的内容里。</div>
-
-        <h2>③ 合成文本 <span class="hint">必填 · 放在 assistant 消息</span></h2>
-        <div class="tagbar" data-tagbar="cloneText"></div>
-        <textarea id="cloneText" rows="4" placeholder="输入要合成的文本，可插入 (风格) 与 [音频标签]…"></textarea>
-        <input id="cloneStyleTags" type="text" placeholder="整体风格标签（可选，如：磁性 慵懒）">
-
-        <div class="actions">
-          <button id="btnCloneGo" class="btn primary" type="button">🎙 生成语音</button>
-          <span id="cloneError" class="error"></span>
-        </div>
-        <div id="cloneResult" class="result"></div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ================= 设置弹窗 ================= -->
+  <!-- 设置 -->
   <div id="settingsModal" class="modal hidden">
     <div class="modal-box">
-      <h2>⚙ API 设置</h2>
+      <h2 class="sec-label"><span class="tick"></span>API 设置&nbsp;<span class="en">SETTINGS</span></h2>
 
       <label class="field-label" for="cfgApiKey">API Key</label>
       <div class="key-row">
         <input id="cfgApiKey" type="password" placeholder="sk-…（按量付费）或 tp-…（Token Plan）" autocomplete="off">
-        <button id="btnToggleKey" class="btn ghost sm" type="button">显示</button>
+        <button id="btnToggleKey" class="link" type="button">显示</button>
       </div>
 
       <label class="field-label" for="cfgBaseUrl">Base URL</label>
       <input id="cfgBaseUrl" type="text" placeholder="https://api.xiaomimimo.com/v1">
-      <p class="hint">
-        按量付费：https://api.xiaomimimo.com/v1<br>
-        Token Plan：https://token-plan-cn.xiaomimimo.com/v1
-      </p>
+      <div class="hint">按量付费：https://api.xiaomimimo.com/v1<br>Token Plan：https://token-plan-cn.xiaomimimo.com/v1</div>
 
       <div class="model-note">
         <b>模型说明</b>
-        <p>mimo-v2.5-tts-voicedesign —— 文本描述设计音色（本工具 Tab 1）</p>
-        <p>mimo-v2.5-tts-voiceclone —— 音频样本复刻音色（本工具 Tab 2）</p>
-        <p>固定使用非流式 wav 输出；voicedesign / voiceclone 的流式仅为兼容模式，无额外增益。</p>
+        <p>mimo-v2.5-tts-voicedesign —— 文本描述设计音色（Tab 1）</p>
+        <p>mimo-v2.5-tts-voiceclone —— 音频样本复刻音色（Tab 2）</p>
+        <p>固定使用非流式 wav 输出；voicedesign / voiceclone 的流式仅为兼容模式。</p>
       </div>
 
       <p id="cfgMsg" class="error"></p>
       <div class="modal-actions">
-        <button id="btnSaveConfig" class="btn primary" type="button">保存</button>
-        <button id="btnCloseSettings" class="btn ghost" type="button">关闭</button>
+        <button id="btnSaveConfig" class="btn-ink" type="button">保存</button>
+        <button id="btnCloseSettings" class="link" type="button">关闭</button>
       </div>
     </div>
   </div>

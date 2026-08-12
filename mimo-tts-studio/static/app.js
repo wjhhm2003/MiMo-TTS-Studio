@@ -207,8 +207,7 @@ function buildVoiceDescription() {
   if (genZh && ageZh) {
     const noDe = ['儿童', '少年', '老年'].includes(ageZh);
     head = `一位${ageZh}${noDe ? '' : '的'}${genZh}`;
-  }
-  else if (genZh) head = `一位${genZh}`;
+  } else if (genZh) head = `一位${genZh}`;
   else if (ageZh) head = `一位${ageZh}的说话者`;
 
   const sentences = [];
@@ -247,7 +246,7 @@ function updatePromptCount() {
   const v = $('designPrompt').value;
   const sentences = v.split(/[。！？.!?\n]/).filter((s) => s.trim()).length;
   const el = $('designPromptCount');
-  el.textContent = `${v.length} 字 · ${sentences} 句（建议 1-4 句）`;
+  el.textContent = `${v.length} 字 · ${sentences} 句（建议 1–4 句）`;
   el.classList.toggle('warn', sentences > 4 || v.length > 400);
 }
 
@@ -258,12 +257,9 @@ function wireForm() {
   form.addEventListener('input', (e) => {
     if (e.target.id !== 'designPrompt') onChanged();
   });
-  form.addEventListener('change', (e) => {
-    onChanged();
-  });
+  form.addEventListener('change', () => onChanged());
   $('btnRegenPrompt').addEventListener('click', () => regeneratePrompt(true));
 
-  // 描述预览框在另一个卡片里，需要单独监听手工编辑
   $('designPrompt').addEventListener('input', () => {
     state.promptDirty = true;
     updatePromptCount();
@@ -406,7 +402,6 @@ function runGenerate(tab) {
   const btn = tab === 'design' ? $('btnDesignGo') : $('btnCloneGo');
   const original = btn.textContent;
   btn.disabled = true;
-  btn.classList.add('loading');
   btn.textContent = '生成中…';
 
   fetch(`/api/tts/${tab}`, {
@@ -422,7 +417,6 @@ function runGenerate(tab) {
     .catch((err) => showError(tab, err.message || String(err)))
     .finally(() => {
       btn.disabled = false;
-      btn.classList.remove('loading');
       btn.textContent = original;
     });
 }
@@ -468,11 +462,12 @@ function renderResult(tab, data) {
   box.innerHTML = `
     <audio controls preload="auto" src="${audioUrl}"></audio>
     <div class="result-foot">
-      <a class="btn sm" download="mimo-tts-${stamp}.wav" href="${audioUrl}">⬇ 下载 WAV</a>
-      <span class="result-meta">${data.model || ''}${secs}</span>
+      <a class="btn-ink sm" download="mimo-tts-${stamp}.wav" href="${audioUrl}">下载 WAV</a>
+      <span class="meta">${data.model || ''}${secs}</span>
     </div>`;
   box.classList.add('visible');
-  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const top = box.getBoundingClientRect().top + window.scrollY - 72;
+  window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
 }
 
 /* ============================ 样本上传 ============================ */
@@ -601,8 +596,8 @@ async function loadConfig() {
 function updateKeyStatus() {
   const el = $('keyStatus');
   const has = !!(state.config.api_key || '').trim();
-  el.textContent = has ? '✓ API Key 已配置' : '未配置 API Key';
-  el.className = 'key-status ' + (has ? 'ok' : 'warn');
+  $('keyStatusText').textContent = has ? 'API KEY 已配置' : 'API KEY 未配置';
+  el.classList.toggle('ok', has);
 }
 
 /* ============================ 通用 ============================ */
