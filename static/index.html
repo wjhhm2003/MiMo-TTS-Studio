@@ -27,14 +27,14 @@
     </header>
 
     <!-- 索引式 Tab -->
-    <nav class="index">
-      <button class="tab active" data-tab="design" type="button">01&nbsp;&nbsp;音色设计</button>
-      <button class="tab" data-tab="clone" type="button">02&nbsp;&nbsp;音色复刻</button>
+    <nav class="index" role="tablist" aria-label="模式切换">
+      <button class="tab active" data-tab="design" type="button" role="tab" id="tab-design" aria-controls="panel-design" aria-selected="true">01&nbsp;&nbsp;音色设计</button>
+      <button class="tab" data-tab="clone" type="button" role="tab" id="tab-clone" aria-controls="panel-clone" aria-selected="false">02&nbsp;&nbsp;音色复刻</button>
     </nav>
 
     <main>
       <!-- ============ Tab 1: 音色设计 ============ -->
-      <section id="panel-design" class="panel active">
+      <section id="panel-design" class="panel active" role="tabpanel" aria-labelledby="tab-design">
         <div class="grid">
           <section class="block">
             <div class="sec-label"><span class="tick"></span>01 — 音色描述&nbsp;<span class="en">VOICE PROMPT</span></div>
@@ -161,7 +161,7 @@
 
               <div class="action-row">
                 <button id="btnDesignGo" class="btn-ink" type="button">生成语音</button>
-                <span id="designError" class="error"></span>
+                <span id="designError" class="error" role="alert"></span>
               </div>
               <div id="designResult" class="result">
                 <div class="result-placeholder">合成音频</div>
@@ -172,14 +172,14 @@
       </section>
 
       <!-- ============ Tab 2: 音色复刻 ============ -->
-      <section id="panel-clone" class="panel">
+      <section id="panel-clone" class="panel" role="tabpanel" aria-labelledby="tab-clone">
         <section class="block">
           <div class="sec-label req"><span class="tick"></span>01 — 音频样本&nbsp;<span class="en">SAMPLE</span></div>
-          <div id="dropZone" class="dropzone">
-            <input type="file" id="fileInput" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav" hidden>
+          <label id="dropZone" class="dropzone" for="fileInput">
+            <input type="file" id="fileInput" class="sr-only" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav">
             <p>把音频拖到这里，或 <span class="link">点击选择文件</span></p>
             <p class="hint">仅支持 mp3 / wav；Base64 编码后不能超过 10MB（建议原文件 ≤ 7.5MB），上传后即时试听</p>
-          </div>
+          </label>
           <div id="sampleInfo" class="sample-info hidden">
             <audio id="samplePlayer" controls preload="metadata"></audio>
             <div class="sample-meta">
@@ -203,7 +203,7 @@
 
           <div class="action-row">
             <button id="btnCloneGo" class="btn-ink" type="button">生成语音</button>
-            <span id="cloneError" class="error"></span>
+            <span id="cloneError" class="error" role="alert"></span>
           </div>
           <div id="cloneResult" class="result">
             <div class="result-placeholder">合成音频</div>
@@ -214,7 +214,7 @@
   </div>
 
   <!-- 设置 -->
-  <div id="settingsModal" class="modal hidden">
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="API 设置">
     <div class="modal-box">
       <h2 class="sec-label"><span class="tick"></span>API 设置&nbsp;<span class="en">SETTINGS</span></h2>
 
@@ -235,7 +235,7 @@
         <p>固定使用非流式 wav 输出；voicedesign / voiceclone 的流式仅为兼容模式。</p>
       </div>
 
-      <p id="cfgMsg" class="error"></p>
+      <p id="cfgMsg" class="error" role="alert"></p>
       <div class="modal-actions">
         <button id="btnSaveConfig" class="btn-ink" type="button">保存</button>
         <button id="btnCloseSettings" class="link" type="button">关闭</button>

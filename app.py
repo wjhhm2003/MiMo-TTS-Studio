@@ -7,12 +7,13 @@ import json
 import os
 import sys
 import threading
+import time
 import webbrowser
 from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -46,6 +47,9 @@ DEFAULT_CONFIG = {
     "base_url": DEFAULT_BASE_URL,
 }
 
+# 请求体上限：复刻样本 Base64 ≤ 10MB，加上 JSON 包装留出余量
+MAX_JSON_BODY = 12 * 1024 * 1024
+
 
 def load_config() -> dict[str, Any]:
     cfg = dict(DEFAULT_CONFIG)
@@ -57,6 +61,15 @@ def load_config() -> dict[str, Any]:
                 for key in DEFAULT_CONFIG:
                     if key in data:
                         cfg[key] = data[key]
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            print(f"[警告] config.json 解析失败，已备份为 config.json.bak，将使用默认配置。", file=sys.stderr)
+            try:
+                bak = path.with_name("config.json.bak")
+                if bak.exists():
+                    bak = path.with_name(f"config.json.corrupt-{int(time.time())}.bak")
+                path.replace(bak)
+            except Exception:
+                pass
         except Exception:
             pass
     return cfg
@@ -65,7 +78,23 @@ def load_config() -> dict[str, Any]:
 def save_config(cfg: dict[str, Any]) -> None:
     data = {key: (cfg.get(key) or "") for key in DEFAULT_CONFIG}
     path = config_path()
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp = path.with_name("config.json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _mask_key(key: str) -> str:
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "****"
+    return f"{key[:3]}****{key[-4:]}"
+
+
+def _guard_body(request: Request) -> None:
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_JSON_BODY:
+        raise HTTPException(status_code=413, detail="请求体过大，请检查上传内容")
 
 
 def _creds() -> tuple[str, str]:
@@ -116,29 +145,36 @@ app = FastAPI(title="MiMo TTS Studio", docs_url="/api/docs", openapi_url="/api/o
 @app.get("/api/config")
 def get_config() -> dict[str, Any]:
     cfg = load_config()
+    key = cfg.get("api_key") or ""
     return {
-        "api_key": cfg.get("api_key") or "",
+        "api_key_masked": _mask_key(key),
         "base_url": cfg.get("base_url") or DEFAULT_BASE_URL,
-        "has_key": bool((cfg.get("api_key") or "").strip()),
+        "has_key": bool(key.strip()),
     }
 
 
 @app.post("/api/config")
 def set_config(req: ConfigRequest) -> dict[str, Any]:
     cfg = load_config()
-    cfg["api_key"] = (req.api_key or "").strip()
+    new_key = (req.api_key or "").strip()
+    if new_key:
+        cfg["api_key"] = new_key
     base_url = (req.base_url or "").strip().rstrip("/")
     if not base_url:
         base_url = DEFAULT_BASE_URL
     if not (base_url.startswith("http://") or base_url.startswith("https://")):
         raise HTTPException(status_code=400, detail="Base URL 需以 http:// 或 https:// 开头")
     cfg["base_url"] = base_url
-    save_config(cfg)
+    try:
+        save_config(cfg)
+    except OSError:
+        raise HTTPException(status_code=500, detail="无法写入 config.json，请检查程序目录的写入权限。")
     return {"ok": True, "has_key": bool(cfg["api_key"])}
 
 
 @app.post("/api/tts/design")
-def tts_design(req: DesignRequest) -> dict[str, Any]:
+def tts_design(req: DesignRequest, request: Request) -> dict[str, Any]:
+    _guard_body(request)
     prompt = (req.prompt or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="音色描述不能为空")
@@ -187,7 +223,8 @@ def tts_design(req: DesignRequest) -> dict[str, Any]:
 
 
 @app.post("/api/tts/clone")
-def tts_clone(req: CloneRequest) -> dict[str, Any]:
+def tts_clone(req: CloneRequest, request: Request) -> dict[str, Any]:
+    _guard_body(request)
     sample = (req.sample_b64 or "").strip()
     if not sample:
         raise HTTPException(status_code=400, detail="请先上传音频样本")
@@ -252,7 +289,14 @@ def _open_browser(port: int) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiMo TTS Studio 本地服务器")
-    parser.add_argument("--port", type=int, default=int(os.environ.get("MIMO_STUDIO_PORT", "8000")))
+
+    def _default_port() -> int:
+        try:
+            return int(os.environ.get("MIMO_STUDIO_PORT", "8000"))
+        except ValueError:
+            return 8000
+
+    parser.add_argument("--port", type=int, default=_default_port())
     parser.add_argument("--no-browser", action="store_true", help="启动后不自动打开浏览器")
     args = parser.parse_args()
 

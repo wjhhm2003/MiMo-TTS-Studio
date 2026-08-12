@@ -3,9 +3,17 @@
 /* ============================ 常量与状态 ============================ */
 const $ = (id) => document.getElementById(id);
 
+let lastFocus = null;   // 打开设置弹窗前的焦点元素
+
+function maskKey(key) {
+  if (!key) return '';
+  if (key.length <= 8) return '****';
+  return key.slice(0, 3) + '****' + key.slice(-4);
+}
+
 const state = {
   tab: 'design',
-  config: { api_key: '', base_url: '' },
+  config: { has_key: false, key_masked: '', base_url: '' },
   sample: null,          // { b64, mime, name, size }
   promptDirty: false,    // 用户手工改过描述预览后，不再自动覆盖
 };
@@ -353,9 +361,14 @@ function insertStyleTag(ta, tag) {
     const inner = m[0].replace(/[\(\（\)）]/g, '');
     const tags = inner.split(/[\s,，、;；]+/).filter(Boolean);
     if (!tags.includes(tag)) tags.push(tag);
-    ta.value = text.slice(0, m.index) + `(${tags.join(' ')})` + text.slice(m.index + m[0].length);
+    const prefix = `(${tags.join(' ')})`;
+    ta.value = text.slice(0, m.index) + prefix + text.slice(m.index + m[0].length);
+    ta.setSelectionRange(m.index + prefix.length, m.index + prefix.length);
   } else {
+    const start = ta.selectionStart == null ? ta.value.length : ta.selectionStart;
     ta.value = `(${tag})${text}`;
+    const cursor = start + tag.length + 2;
+    ta.setSelectionRange(cursor, cursor);
   }
 }
 
@@ -373,11 +386,29 @@ function insertInlineTag(ta, tag) {
 
 /* ============================ Tab 切换 ============================ */
 function wireTabs() {
-  document.querySelectorAll('.tab').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.tab = btn.dataset.tab;
-      document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
-      document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === `panel-${state.tab}`));
+  const tabs = [...document.querySelectorAll('.tab')];
+  const activate = (btn) => {
+    state.tab = btn.dataset.tab;
+    tabs.forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === `panel-${state.tab}`));
+  };
+  tabs.forEach((btn, idx) => {
+    btn.addEventListener('click', () => activate(btn));
+    btn.addEventListener('keydown', (e) => {
+      let next = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = tabs[(idx + 1) % tabs.length];
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = tabs[(idx - 1 + tabs.length) % tabs.length];
+      else if (e.key === 'Home') next = tabs[0];
+      else if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (next) {
+        e.preventDefault();
+        activate(next);
+        next.focus();
+      }
     });
   });
 }
@@ -390,7 +421,7 @@ function wireGenerate() {
 
 function runGenerate(tab) {
   clearError(tab);
-  if (!(state.config.api_key || '').trim()) {
+  if (!state.config.has_key) {
     showError(tab, '请先配置 API Key');
     openSettings();
     return;
@@ -475,7 +506,6 @@ function wireUpload() {
   const zone = $('dropZone');
   const input = $('fileInput');
 
-  zone.addEventListener('click', () => input.click());
   zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', (e) => {
@@ -532,9 +562,9 @@ function renderSample() {
 /* ============================ 设置 ============================ */
 function wireSettings() {
   $('btnSettings').addEventListener('click', openSettings);
-  $('keyStatus').addEventListener('click', () => { if (!state.config.api_key) openSettings(); });
+  $('keyStatus').addEventListener('click', () => { if (!state.config.has_key) openSettings(); });
   $('keyStatus').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !state.config.api_key) openSettings();
+    if (e.key === 'Enter' && !state.config.has_key) openSettings();
   });
   $('btnCloseSettings').addEventListener('click', closeSettings);
   $('btnSaveConfig').addEventListener('click', saveConfig);
@@ -547,18 +577,40 @@ function wireSettings() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('settingsModal').classList.contains('hidden')) closeSettings();
+    if (e.key === 'Tab' && !$('settingsModal').classList.contains('hidden')) trapFocus(e);
   });
 }
 
 function openSettings() {
-  $('cfgApiKey').value = state.config.api_key || '';
+  lastFocus = document.activeElement;
+  $('cfgApiKey').value = '';
+  $('cfgApiKey').placeholder = state.config.has_key
+    ? `已保存：${state.config.key_masked || ''}（留空保持不变）`
+    : 'sk-…（按量付费）或 tp-…（Token Plan）';
   $('cfgBaseUrl').value = state.config.base_url || '';
   $('cfgMsg').textContent = '';
   $('settingsModal').classList.remove('hidden');
+  $('cfgApiKey').focus();
 }
 
 function closeSettings() {
   $('settingsModal').classList.add('hidden');
+  if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+}
+
+function trapFocus(e) {
+  const modal = $('settingsModal');
+  const focusables = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
 }
 
 async function saveConfig() {
@@ -573,7 +625,8 @@ async function saveConfig() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || `保存失败（HTTP ${res.status}）`);
-    state.config = { api_key, base_url };
+    state.config.has_key = !!data.has_key;
+    if (api_key) state.config.key_masked = maskKey(api_key);
     updateKeyStatus();
     toast('API 设置已保存');
     closeSettings();
@@ -587,7 +640,11 @@ async function loadConfig() {
     const res = await fetch('/api/config');
     if (res.ok) {
       const data = await res.json();
-      state.config = { api_key: data.api_key || '', base_url: data.base_url || '' };
+      state.config = {
+        has_key: !!data.has_key,
+        key_masked: data.api_key_masked || '',
+        base_url: data.base_url || '',
+      };
       updateKeyStatus();
     }
   } catch (e) { /* 服务未就绪时忽略 */ }
@@ -595,7 +652,7 @@ async function loadConfig() {
 
 function updateKeyStatus() {
   const el = $('keyStatus');
-  const has = !!(state.config.api_key || '').trim();
+  const has = state.config.has_key;
   $('keyStatusText').textContent = has ? 'API KEY 已配置' : 'API KEY 未配置';
   el.classList.toggle('ok', has);
 }

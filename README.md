@@ -166,6 +166,7 @@ MiMo-TTS-Studio/
 ```
 
 > `config.json` 已加入 `.gitignore`，不会提交到仓库，请勿手动分享该文件。
+> 再次打开设置时，API Key 输入框留空并保存，会保留已保存的 Key（输入新 Key 则覆盖）。
 
 ### Base URL
 
