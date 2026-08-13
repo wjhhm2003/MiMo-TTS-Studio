@@ -12,6 +12,7 @@ import tempfile
 import webbrowser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -25,6 +26,7 @@ from mimoclient import (
     MODEL_CLONE,
     MODEL_DESIGN,
     MiMoError,
+    generate_text,
     synthesize,
 )
 
@@ -165,6 +167,12 @@ class ConfigRequest(BaseModel):
     base_url: str = ""
 
 
+class TextRefineRequest(BaseModel):
+    prompt: str = ""
+    text: str = ""
+    style_tags: str = ""
+
+
 app = FastAPI(title="MiMo TTS Studio", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 
@@ -239,6 +247,40 @@ def tts_design(req: DesignRequest, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=exc.status or 502, detail=exc.message)
 
     return _api_result(audio_b64, MODEL_DESIGN, meta, include_preview=True)
+
+
+@app.post("/api/text/refine")
+def refine_text(req: TextRefineRequest, request: Request) -> dict[str, Any]:
+    _guard_body(request)
+    prompt = (req.prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="音色描述不能为空")
+    if len(prompt) > 2000:
+        raise HTTPException(status_code=400, detail="音色描述不能超过 2000 字")
+    source = (req.text or "").strip()
+    if len(source) > 5000:
+        raise HTTPException(status_code=400, detail="合成文本不能超过 5000 字")
+    style = (req.style_tags or "").strip()
+    instruction = (
+        "请根据音色描述生成一段适合该音色朗读的中文合成文本。"
+        "只返回最终朗读文本，不要解释，不要加引号。"
+    )
+    if source:
+        instruction += "请在保留原意的基础上润色下面文本：\n" + source
+    else:
+        instruction += "请生成一段 1-3 句的自然示例文本。"
+    if style:
+        instruction += "整体风格标签：" + style
+    messages = [
+        {"role": "system", "content": instruction},
+        {"role": "user", "content": prompt},
+    ]
+    api_key, base_url = _creds()
+    try:
+        content, meta = generate_text(messages=messages, api_key=api_key, base_url=base_url)
+    except MiMoError as exc:
+        raise HTTPException(status_code=exc.status or 502, detail=exc.message)
+    return {"text": content, "model": "mimo-v2.5", "usage": meta.get("usage"), "elapsed_ms": meta.get("elapsed_ms")}
 
 
 @app.post("/api/tts/clone")

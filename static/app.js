@@ -160,11 +160,15 @@ function init() {
   wireGenerate();
   wireUpload();
   wireSettings();
-  $('btnRerunPreview').addEventListener('click', () => runGenerate('design'));
-  $('btnUsePreview').addEventListener('click', () => {
-    $('designText').value = $('designPreviewText').textContent || '';
-    $('designText').dispatchEvent(new Event('input', { bubbles: true }));
-  });
+  const optimize = $('designOptimize');
+  if (optimize) optimize.addEventListener('change', updateOptimizeControls);
+  const generateText = $('btnGenerateText');
+  if (generateText) generateText.addEventListener('click', generatePreviewText);
+  const rerun = $('btnRerunPreview');
+  if (rerun) rerun.addEventListener('click', generatePreviewText);
+  const usePreview = $('btnUsePreview');
+  if (usePreview) usePreview.addEventListener('click', useGeneratedText);
+  updateOptimizeControls();
   regeneratePrompt(true);
   loadConfig();
 }
@@ -424,6 +428,65 @@ function wireGenerate() {
   $('btnCloneGo').addEventListener('click', () => runGenerate('clone'));
 }
 
+function updateOptimizeControls() {
+  const enabled = Boolean($('designOptimize')?.checked);
+  $('designOptimizeActions')?.classList.toggle('hidden', !enabled);
+  if ($('btnDesignGo')) $('btnDesignGo').textContent = enabled ? '确认生成语音' : '生成语音';
+}
+
+function useGeneratedText() {
+  const preview = $('designPreviewText');
+  const text = preview?.textContent?.trim() || '';
+  if (!text) return;
+  $('designText').value = text;
+  $('designText').dispatchEvent(new Event('input', { bubbles: true }));
+  $('designOptimize').checked = true;
+  $('designPreview')?.classList.remove('hidden');
+}
+
+function generatePreviewText() {
+  if (!state.config.has_key) {
+    showError('design', '请先配置 API Key');
+    openSettings();
+    return;
+  }
+  const prompt = $('designPrompt').value.trim();
+  if (!prompt) {
+    showError('design', '请填写音色描述');
+    return;
+  }
+  const button = $('btnGenerateText');
+  const rerun = $('btnRerunPreview');
+  [button, rerun].forEach((el) => { if (el) { el.disabled = true; el.textContent = '润色中…'; } });
+  requestTextRefine()
+    .then((data) => {
+      const text = data.text || '';
+      if (!text) throw new Error('模型没有返回润色文本，请重试');
+      $('designPreviewText').textContent = text;
+      $('designText').value = text;
+      $('designPreview').classList.remove('hidden');
+    })
+    .catch((err) => showError('design', err.message || String(err)))
+    .finally(() => {
+      if (button) { button.disabled = false; button.textContent = '生成文本'; }
+      if (rerun) { rerun.disabled = false; rerun.textContent = '重新润色'; }
+    });
+}
+
+async function requestTextRefine() {
+  const prompt = $('designPrompt').value.trim();
+  const body = prompt;
+  if (!body) throw new Error('请求参数不完整');
+  const res = await fetch('/api/text/refine', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, text: $('designText').value.trim(), style_tags: $('designStyleTags').value.trim() }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `请求失败（HTTP ${res.status}）`);
+  return data;
+}
+
 function runGenerate(tab) {
   clearError(tab);
   if (!state.config.has_key) {
@@ -432,7 +495,7 @@ function runGenerate(tab) {
     return;
   }
 
-  const body = tab === 'design' ? buildDesignBody() : buildCloneBody();
+  const body = tab === 'design' ? buildDesignBody({ optimize_preview: false }) : buildCloneBody();
   if (!body) return;
 
   const btn = tab === 'design' ? $('btnDesignGo') : $('btnCloneGo');
@@ -457,7 +520,7 @@ function runGenerate(tab) {
     });
 }
 
-function buildDesignBody() {
+function buildDesignBody(overrides = {}) {
   const prompt = $('designPrompt').value.trim();
   if (!prompt) {
     showError('design', '请填写音色描述（可先用模板或左侧工单生成）');
@@ -465,9 +528,9 @@ function buildDesignBody() {
   }
   return {
     prompt,
-    text: $('designText').value.trim(),
+    text: overrides.text ?? $('designText').value.trim(),
     style_tags: $('designStyleTags').value.trim(),
-    optimize_preview: $('designOptimize').checked,
+    optimize_preview: overrides.optimize_preview ?? $('designOptimize').checked,
   };
 }
 
@@ -492,22 +555,30 @@ function buildCloneBody() {
 
 function renderResult(tab, data) {
   const box = tab === 'design' ? $('designResult') : $('cloneResult');
+  const preview = tab === 'design' ? $('designPreview') : null;
   const audioUrl = `data:audio/wav;base64,${data.audio_b64}`;
   const secs = data.elapsed_ms != null ? ` · ${(data.elapsed_ms / 1000).toFixed(1)}s` : '';
   const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-  box.innerHTML = `
+  const audioMarkup = `
     <audio controls preload="auto" src="${audioUrl}"></audio>
     <div class="result-foot">
       <a class="btn-ink sm" download="mimo-tts-${stamp}.wav" href="${audioUrl}">下载 WAV</a>
       <span class="meta">${data.model || ''}${secs}</span>
     </div>`;
+  const audio = document.createElement('div');
+  audio.className = 'result-audio';
+  audio.innerHTML = audioMarkup;
+  box.replaceChildren();
+  if (preview) box.appendChild(preview);
+  box.appendChild(audio);
   box.classList.add('visible');
   if (tab === 'design') {
-    const preview = $('designPreview');
     const previewText = $('designPreviewText');
     const hasPreview = Boolean(data.final_text_preview);
-    previewText.textContent = data.final_text_preview || '';
-    preview.classList.toggle('hidden', !hasPreview);
+    if (previewText && preview) {
+      previewText.textContent = data.final_text_preview || '';
+      preview.classList.toggle('hidden', !hasPreview);
+    }
   }
   const top = box.getBoundingClientRect().top + window.scrollY - 72;
   window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });

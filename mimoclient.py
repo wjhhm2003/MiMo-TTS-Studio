@@ -17,6 +17,7 @@ TOKEN_PLAN_BASE_URL = "https://token-plan-cn.xiaomimimo.com/v1"
 
 MODEL_DESIGN = "mimo-v2.5-tts-voicedesign"
 MODEL_CLONE = "mimo-v2.5-tts-voiceclone"
+MODEL_TEXT = "mimo-v2.5"
 
 # 文档规定：复刻样本的 Base64 字符串不能超过 10 MB
 MAX_SAMPLE_B64 = 10 * 1024 * 1024
@@ -139,3 +140,52 @@ def synthesize(
         "elapsed_ms": elapsed_ms,
     }
     return audio_b64, meta
+
+
+def generate_text(
+    *,
+    messages: list[dict[str, str]],
+    api_key: str,
+    base_url: str = DEFAULT_BASE_URL,
+    timeout: int = _TIMEOUT,
+) -> tuple[str, dict[str, Any]]:
+    """Call the MiMo text model through the standard Chat Completions API."""
+    if not api_key or not api_key.strip():
+        raise MiMoError("API Key is not configured")
+
+    started = time.monotonic()
+    try:
+        resp = requests.post(
+            base_url.rstrip("/") + "/chat/completions",
+            json={"model": MODEL_TEXT, "messages": messages},
+            headers={
+                "Content-Type": "application/json",
+                "api-key": api_key.strip(),
+                "Authorization": f"Bearer {api_key.strip()}",
+            },
+            timeout=timeout,
+        )
+    except requests.exceptions.Timeout:
+        raise MiMoError("Text generation timed out")
+    except requests.exceptions.ConnectionError:
+        raise MiMoError("Unable to connect to MiMo service")
+    except requests.exceptions.RequestException as exc:
+        raise MiMoError(f"Network request failed: {exc}")
+
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+    try:
+        data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError
+    except ValueError:
+        raise MiMoError(f"Invalid JSON response (HTTP {resp.status_code})")
+    if resp.status_code != 200:
+        raise MiMoError(_friendly_message(resp.status_code, data), status=resp.status_code, code=resp.reason)
+
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise MiMoError("Text model response did not contain message content")
+    if not isinstance(content, str) or not content.strip():
+        raise MiMoError("Text model returned empty content")
+    return content.strip(), {"usage": data.get("usage"), "elapsed_ms": elapsed_ms}
