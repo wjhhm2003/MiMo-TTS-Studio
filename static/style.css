@@ -409,6 +409,16 @@ textarea:focus { border-color: var(--ink); }
 .result audio { width: 100%; margin-bottom: 12px; }
 .result-foot { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 
+.text-preview {
+  border: 1px solid var(--hairline);
+  border-bottom: 0;
+  padding: 20px 24px;
+}
+
+.text-preview .sec-label { margin-bottom: 12px; }
+.text-preview p { margin: 0; white-space: pre-wrap; line-height: 1.8; }
+.preview-actions { display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap; }
+
 /* ---------- 上传 ---------- */
 .dropzone {
   border: 1px solid var(--hairline);

@@ -164,6 +164,14 @@
                 <span id="designError" class="error" role="alert"></span>
               </div>
               <div id="designResult" class="result">
+                <div id="designPreview" class="text-preview hidden" aria-live="polite">
+                  <div class="sec-label"><span class="tick"></span>润色文本&nbsp;<span class="en">TEXT PREVIEW</span></div>
+                  <p id="designPreviewText"></p>
+                  <div class="preview-actions">
+                    <button id="btnRerunPreview" class="link" type="button">重新润色</button>
+                    <button id="btnUsePreview" class="link" type="button">填入合成文本</button>
+                  </div>
+                </div>
                 <div class="result-placeholder">合成音频</div>
               </div>
             </section>

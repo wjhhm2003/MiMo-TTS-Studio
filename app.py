@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 import time
+import tempfile
 import webbrowser
 from pathlib import Path
 from typing import Any
@@ -59,8 +60,9 @@ def load_config() -> dict[str, Any]:
             data = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 for key in DEFAULT_CONFIG:
-                    if key in data:
-                        cfg[key] = data[key]
+                    value = data.get(key)
+                    if isinstance(value, str):
+                        cfg[key] = value
         except (json.JSONDecodeError, UnicodeDecodeError):
             print(f"[警告] config.json 解析失败，已备份为 config.json.bak，将使用默认配置。", file=sys.stderr)
             try:
@@ -78,9 +80,20 @@ def load_config() -> dict[str, Any]:
 def save_config(cfg: dict[str, Any]) -> None:
     data = {key: (cfg.get(key) or "") for key in DEFAULT_CONFIG}
     path = config_path()
-    tmp = path.with_name("config.json.tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix="config.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+            json.dump(data, tmp, ensure_ascii=False, indent=2)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def _mask_key(key: str) -> str:
@@ -100,6 +113,19 @@ def _guard_body(request: Request) -> None:
 def _creds() -> tuple[str, str]:
     cfg = load_config()
     return (cfg.get("api_key") or "").strip(), (cfg.get("base_url") or DEFAULT_BASE_URL).strip()
+
+
+def _api_result(audio_b64: str, model: str, meta: dict[str, Any], *, include_preview: bool = False) -> dict[str, Any]:
+    result = {
+        "audio_b64": audio_b64,
+        "model": model,
+        "format": "wav",
+        "usage": meta.get("usage"),
+        "elapsed_ms": meta.get("elapsed_ms"),
+    }
+    if include_preview:
+        result["final_text_preview"] = meta.get("final_text_preview") or ""
+    return result
 
 
 def _normalize_style_tags(tags: str) -> str:
@@ -159,11 +185,10 @@ def set_config(req: ConfigRequest) -> dict[str, Any]:
     new_key = (req.api_key or "").strip()
     if new_key:
         cfg["api_key"] = new_key
-    base_url = (req.base_url or "").strip().rstrip("/")
-    if not base_url:
-        base_url = DEFAULT_BASE_URL
-    if not (base_url.startswith("http://") or base_url.startswith("https://")):
-        raise HTTPException(status_code=400, detail="Base URL 需以 http:// 或 https:// 开头")
+    base_url = (req.base_url or "").strip().rstrip("/") or DEFAULT_BASE_URL
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid Base URL")
     cfg["base_url"] = base_url
     try:
         save_config(cfg)
@@ -213,13 +238,7 @@ def tts_design(req: DesignRequest, request: Request) -> dict[str, Any]:
     except MiMoError as exc:
         raise HTTPException(status_code=exc.status or 502, detail=exc.message)
 
-    return {
-        "audio_b64": audio_b64,
-        "model": MODEL_DESIGN,
-        "format": "wav",
-        "usage": meta.get("usage"),
-        "elapsed_ms": meta.get("elapsed_ms"),
-    }
+    return _api_result(audio_b64, MODEL_DESIGN, meta, include_preview=True)
 
 
 @app.post("/api/tts/clone")
@@ -237,8 +256,8 @@ def tts_clone(req: CloneRequest, request: Request) -> dict[str, Any]:
     if mime not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail="仅支持 mp3 / wav 音频样本（MIME：audio/mpeg 或 audio/wav）")
     try:
-        base64.b64decode(sample)
-    except Exception:
+        base64.b64decode(sample, validate=True)
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="音频样本不是有效的 Base64 数据")
 
     text = (req.text or "").strip()
@@ -269,13 +288,7 @@ def tts_clone(req: CloneRequest, request: Request) -> dict[str, Any]:
     except MiMoError as exc:
         raise HTTPException(status_code=exc.status or 502, detail=exc.message)
 
-    return {
-        "audio_b64": audio_b64,
-        "model": MODEL_CLONE,
-        "format": "wav",
-        "usage": meta.get("usage"),
-        "elapsed_ms": meta.get("elapsed_ms"),
-    }
+    return _api_result(audio_b64, MODEL_CLONE, meta)
 
 
 STATIC_DIR = resource_path("static")

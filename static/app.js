@@ -160,6 +160,11 @@ function init() {
   wireGenerate();
   wireUpload();
   wireSettings();
+  $('btnRerunPreview').addEventListener('click', () => runGenerate('design'));
+  $('btnUsePreview').addEventListener('click', () => {
+    $('designText').value = $('designPreviewText').textContent || '';
+    $('designText').dispatchEvent(new Event('input', { bubbles: true }));
+  });
   regeneratePrompt(true);
   loadConfig();
 }
@@ -497,6 +502,13 @@ function renderResult(tab, data) {
       <span class="meta">${data.model || ''}${secs}</span>
     </div>`;
   box.classList.add('visible');
+  if (tab === 'design') {
+    const preview = $('designPreview');
+    const previewText = $('designPreviewText');
+    const hasPreview = Boolean(data.final_text_preview);
+    previewText.textContent = data.final_text_preview || '';
+    preview.classList.toggle('hidden', !hasPreview);
+  }
   const top = box.getBoundingClientRect().top + window.scrollY - 72;
   window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
 }

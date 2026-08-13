@@ -102,6 +102,8 @@ def synthesize(
 
     try:
         data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError("response JSON must be an object")
     except ValueError:
         raise MiMoError(f"服务返回了无法解析的内容（HTTP {resp.status_code}）。")
 
@@ -119,16 +121,20 @@ def synthesize(
     except (KeyError, IndexError, TypeError):
         raise MiMoError("响应中未找到音频数据，可能是接口返回格式有变化。")
 
+    if not isinstance(audio, dict):
+        raise MiMoError("响应中的音频数据格式不正确。")
+
     if not audio_b64:
         raise MiMoError("返回的音频内容为空。")
 
     try:
-        base64.b64decode(audio_b64)
-    except Exception:
+        base64.b64decode(audio_b64, validate=True)
+    except (ValueError, TypeError):
         raise MiMoError("返回的音频数据不是有效的 Base64 编码。")
 
     meta: dict[str, Any] = {
         "audio": audio,
+        "final_text_preview": audio.get("final_text_preview") or "",
         "usage": data.get("usage"),
         "elapsed_ms": elapsed_ms,
     }
